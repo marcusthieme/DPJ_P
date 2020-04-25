@@ -1,0 +1,134 @@
+﻿SUB vColors
+	////////////////////////////////////////////////   Colors   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
+	//STATUS
+	//Status Background
+	SET v_RGB_SB1 = 'rgb(198, 239, 206)'	;		//Klar
+	SET v_RGB_SB2 = 'rgb(255, 235, 157)'	;		//Påbörjad
+	SET v_RGB_SB3 = 'rgb(255, 199, 207)'	;		//Ej påbörjad
+
+	//Status Text
+	SET v_RGB_ST1 = 'rgb(12, 104, 11)'		;		//Klar
+	SET v_RGB_ST2 = 'rgb(162, 96, 11)'		;		//Påbörjad
+	SET v_RGB_ST3 = 'rgb(156, 1, 7)'		;		//Ej påbörjad
+
+	ENDSUB
+
+
+	//HUVUDGRUPP
+
+	SET v_RGB_VB2 		= 'rgb(40, 138, 207)'		;		//VB
+	SET v_RGB_Qlik2		= 'rgb(1, 152, 69)'			;		//Qlik
+	SET v_RGB_Medius2 	= 'rgb(227, 0, 15)'			;		//Medius
+
+	SET v_RGB_VB 		= 'rgb(115, 197, 231)'		;		//VB
+	SET v_RGB_Qlik 		= 'rgb(49, 183, 105)'		;		//Qlik
+	SET v_RGB_Medius 	= 'rgb(238, 76, 68)'		;		//Medius
+
+
+SUB ToDo
+	////////////////////////////////////////////////   ToDo   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	ToDo:
+	LOAD
+	    date("Created date")	as DateCr,
+	    "Created date"			as %Key_Date,
+	    "Deadline date"			as DateDeadline,
+	    Prio,
+	    Grupp,
+	    Aktivitet,
+	    Status,
+	    Kommentar,
+	    H,
+	    J,
+	    if(Status 			= 'Klar', 			$(v_RGB_SB1),
+	    	if(Status 		= 'Påbörjad', 		$(v_RGB_SB2),
+	    		if(Status 	= 'Ej påbörjad', 	$(v_RGB_SB3)
+	     		)
+	   		)
+	   	) 						as C_StatusBackground ,
+
+	   	if(Status 			= 'Klar', 			$(v_RGB_ST1),
+	    	if(Status 		= 'Påbörjad', 		$(v_RGB_ST2),
+	    		if(Status 	= 'Ej påbörjad', 	$(v_RGB_ST3)
+	     		)
+	   		)
+	   	) 						as C_StatusText,
+
+	   	if(Subfield(Grupp,' ', 1)						= 'VB',			'Visma Business',
+	   		if(Subfield(Grupp,' ', 1)					= 'Qlik',		'Qlik',
+	    		if(Subfield(Grupp,' ', 1)				= 'Medius',		'Medius',
+	    			if(Subfield(Grupp,' ', 1)			= 'Övrigt',		'Övrigt'
+	    			)			
+	     		)
+	   		)
+	   	 )		as Huvudgrupp,
+
+	   	if(Subfield(Grupp,' ', 1)						= 'VB',			$(v_RGB_VB),
+	   		if(Subfield(Grupp,' ', 1)					= 'Qlik',		$(v_RGB_Qlik),
+	    		if(Subfield(Grupp,' ', 1)				= 'Medius',		$(v_RGB_Medius),
+	    			if(Subfield(Grupp,' ', 1)			= 'Övrigt',		$(v_RGB_Övrigt)
+	    			)			
+	     		)
+	   		)
+	   	 )		as C_Huvudgrupp
+
+/*
+	   	if(Status 			= 'Klar', 			$(v_RGB_ST1),
+	    	if(Status 		= 'Påbörjad', 		$(v_RGB_ST2),
+	    		if(Status 	= 'Ej påbörjad', 	$(v_RGB_ST3)
+	     		)
+	   		)
+	   	) 						as C_StatusText
+*/
+//	   	Subfield(Grupp,' ' , 1 )		as Test_Subfield
+	FROM [lib://Root/QlikView/ToDo/ToDo.xlsx]
+	(ooxml, embedded labels, table is Sheet1)
+	where len(Aktivitet)>0
+	;
+
+	ENDSUB
+
+
+
+SUB Kalender
+	////////////////////////////////////////////////   Kalender   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	Min_Max:
+	Load
+	     num(monthstart(date(Min(DateCr)))) 	as MinDate,
+	     Max(DateCr)	as MaxDate
+	Resident ToDo;
+
+
+	Let vMinDate = Peek('MinDate',0,'Min_Max');
+	Let vMaxDate = Peek('MaxDate',0,'Min_Max');
+
+	Drop table Min_Max;
+
+	Master_Calendar:
+	Load 
+		*,
+	     MonthName(Date)                   as MonthName,
+	     QuarterName(Date)                 as QuarterName,
+	     YearName(Date)                    as YearName,
+	     Year(Date) 						as Year,
+	     Month(Date)            			as Month,
+	     WeekDay(Date)                     as WeekDay,
+	   Year(Date)&num(Month(Date),00) 		AS [YearMonth],
+	   Date 								as %Key_Date
+		
+	;
+	Load
+		Date($(vMinDate) + IterNo() - 1)    as Date
+		AutoGenerate 1
+		While $(vMinDate) + IterNo() - 1 <= $(vMaxDate)
+	;
+
+	ENDSUB
+
+
+CALL vColors
+CALL ToDo
+CALL Kalender
